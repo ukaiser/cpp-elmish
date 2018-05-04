@@ -2,7 +2,8 @@
 #include <variant>
 #include <vector>
 #include <iostream>
-
+#include <string>
+#include <cxxabi.h>
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
@@ -32,6 +33,24 @@ inline auto update_visit(
     return update_visit_impl<Model, Function, std::variant<Ts...>, Ts...>(m, v, f);
 }
 
+template<typename T>
+std::string getTypeName(T&&)
+{
+    int status;
+    char * demangled = abi::__cxa_demangle(typeid(T).name(),0,0,&status);
+    std::string demangledName(demangled);
+    free(demangled);
+    return demangledName;
+}
+
+/*
+template<typename T>
+std::string messageToString(const T& t)
+{
+    return getTypeName(t);
+}
+*/
+
 struct IncrementBy
 {
 	int value;
@@ -47,16 +66,37 @@ struct CountModel
 	int counter = 0;
 };
 
+#if 0
 auto updateIncrementBy = [](CountModel &model, const IncrementBy &incrementBy) {
   model.counter += incrementBy.value;
 };
+#else
+struct UpdateIncrementBy
+{
+    void operator()(CountModel &model, const IncrementBy &incrementBy) const {
+        model.counter += incrementBy.value;
+    }
+};
+auto updateIncrementBy = UpdateIncrementBy{};
+#endif
+
+std::string messageToString(const IncrementBy&  incrementBy)
+{
+    return "IncrementBy";
+}
+
 
 auto updateDecrementBy = [](CountModel &model, const DecrementBy &decrementtBy) {
   model.counter -= decrementtBy.value;
 };
 
+std::string messageToString(const DecrementBy&  decrementBy)
+{
+    return "DecrementBy";
+}
 
 using CountMessage = std::variant<IncrementBy, DecrementBy>;
+
 
 
 struct CameraConnected {};
@@ -72,16 +112,26 @@ auto updateCameraConnected = [](CameraConnectedModel &model,
   model.isConnected += true;
 };
 
+std::string messageToString(const CameraConnected&  cameraConnected)
+{
+    return "cameraConnected";
+}
+
+
 auto updateCameraDisconnected = [](CameraConnectedModel &model, const CameraDisconnected &) {
   model.isConnected -= false;
 };
+
+std::string messageToString(const CameraDisconnected&  cameraDisconnected)
+{
+    return "cameraDisconnected";
+}
+
 
 struct AppModel {
   CountModel countModel;
   CameraConnectedModel cameraConnectedModel;
 };
-
-using AppMessage = std::variant<CountMessage, CameraMessage>;
 
 auto updateCountModel = [](AppModel &model, const CountMessage &countMessage) {
         update_visit(model.countModel, countMessage, overloaded {
@@ -90,13 +140,36 @@ auto updateCountModel = [](AppModel &model, const CountMessage &countMessage) {
         });
 };
 
-
+std::string messageToString(const CountMessage&  countMessage)
+{
+    return std::visit([](auto&& arg){
+        return messageToString(arg);
+    }, countMessage);
+};
 
 auto updateCameraModle = [](AppModel &model, const CameraMessage &cameraMessage) {
         update_visit(model.cameraConnectedModel, cameraMessage, overloaded {
             updateCameraConnected,
             updateCameraDisconnected
         });
+};
+
+using AppMessage = std::variant<CountMessage, CameraMessage>;
+void updateModel(AppModel &model, const AppMessage& message)
+{
+    update_visit(model, message, overloaded {
+        updateCountModel,
+        updateCameraModle
+    });   
+}   
+
+
+template<typename ...Ts>
+std::string messageToString(const std::variant<Ts...>&  message)
+{
+    return std::visit([](auto&& arg){
+        return messageToString(arg);
+    }, message);
 };
 
 
@@ -111,12 +184,9 @@ public:
 
 	void update(const Message& message)
 	{
-        update_visit(_model, message, overloaded {
-            updateCountModel,
-            updateCameraModle
-        });   
+        std::cout << messageToString(message) << "\n";
+        updateModel(_model, message);
 	}
-
 
 private:
 	Model _model;
