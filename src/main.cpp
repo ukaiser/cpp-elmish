@@ -80,7 +80,7 @@ struct UpdateIncrementBy
 auto updateIncrementBy = UpdateIncrementBy{};
 #endif
 
-std::string messageToString(const IncrementBy&  incrementBy)
+std::string messageToString(const IncrementBy&)
 {
     return "IncrementBy";
 }
@@ -90,7 +90,7 @@ auto updateDecrementBy = [](CountModel &model, const DecrementBy &decrementtBy) 
   model.counter -= decrementtBy.value;
 };
 
-std::string messageToString(const DecrementBy&  decrementBy)
+std::string messageToString(const DecrementBy&)
 {
     return "DecrementBy";
 }
@@ -112,7 +112,7 @@ auto updateCameraConnected = [](CameraConnectedModel &model,
   model.isConnected += true;
 };
 
-std::string messageToString(const CameraConnected&  cameraConnected)
+std::string messageToString(const CameraConnected&)
 {
     return "cameraConnected";
 }
@@ -122,7 +122,7 @@ auto updateCameraDisconnected = [](CameraConnectedModel &model, const CameraDisc
   model.isConnected -= false;
 };
 
-std::string messageToString(const CameraDisconnected&  cameraDisconnected)
+std::string messageToString(const CameraDisconnected&)
 {
     return "cameraDisconnected";
 }
@@ -145,7 +145,7 @@ std::string messageToString(const CountMessage&  countMessage)
     return std::visit([](auto&& arg){
         return messageToString(arg);
     }, countMessage);
-};
+}
 
 auto updateCameraModle = [](AppModel &model, const CameraMessage &cameraMessage) {
         update_visit(model.cameraConnectedModel, cameraMessage, overloaded {
@@ -170,8 +170,7 @@ std::string messageToString(const std::variant<Ts...>&  message)
     return std::visit([](auto&& arg){
         return messageToString(arg);
     }, message);
-};
-
+}
 
 template<typename Model, typename Message>
 class Store
