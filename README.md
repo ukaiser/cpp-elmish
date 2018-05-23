@@ -1,2 +1,3 @@
 # cpp-elmish
-Elm architecture in cpp
+Simple Elm architecture in cpp
+
