@@ -3,6 +3,7 @@
 #define SRC_REDUCERS_COUNT_REDUCERS_H
 
 #include <string>
+#include "fmt/format.h"
 #include "elmish.h"
 #include "models/app_model.h"
 #include "actions/count_actions.h"
@@ -37,14 +38,14 @@ auto updateCountModel = [](AppModel &model, const CountAction &countMessage) {
         });
 };
 
-std::string actionToString(const IncrementBy&)
+std::string actionToString(const IncrementBy& incrementBy)
 {
-    return "IncrementBy";
+    return fmt::format("IncrementBy {}", incrementBy.value);
 }
 
-std::string actionToString(const DecrementBy&)
+std::string actionToString(const DecrementBy& decrementBy)
 {
-    return "DecrementBy";
+    return fmt::format("DecrementBy {}", decrementBy.value);
 }
 
 
