@@ -16,6 +16,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-7
+            - ninja-build
       env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
     # GCC 8
@@ -29,6 +30,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-8
+            - ninja-build
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
 
     # Clang 6.0
@@ -43,13 +45,9 @@ matrix:
             - llvm-toolchain-trusty-6.0
           packages:
             - clang-6.0
+            - ninja-build
       env: MATRIX_EVAL="CC=clang-6.0 && CXX=clang++-6.0"
 
-addons:
-  apt:
-    packages:
-    - ninja-build
-    - python3-pip
 
 before_install:
   - eval "${MATRIX_EVAL}"
