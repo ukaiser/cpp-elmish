@@ -1,0 +1,51 @@
+
+#ifndef SRC_REDUCERS_COUNT_REDUCERS_H
+#define SRC_REDUCERS_COUNT_REDUCERS_H
+
+#include <string>
+#include "elmish.h"
+#include "models/app_model.h"
+#include "actions/count_actions.h"
+
+
+#if 0
+auto updateIncrementBy = [](AppModel &model, const IncrementBy &incrementBy) {
+  selectCountModel(model).counter += incrementBy.value;
+};
+#else
+struct UpdateIncrementBy
+{
+    void operator()(AppModel &model, const IncrementBy &incrementBy) const {
+        selectCountModel(model).counter += incrementBy.value;
+    }
+};
+auto updateIncrementBy = UpdateIncrementBy{};
+#endif
+
+
+
+auto updateDecrementBy = [](AppModel &model, const DecrementBy &decrementtBy) {
+  selectCountModel(model).counter -= decrementtBy.value;
+};
+
+
+
+auto updateCountModel = [](AppModel &model, const CountAction &countMessage) {
+        update_visit(model, countMessage, overloaded {
+            updateIncrementBy,
+            updateDecrementBy
+        });
+};
+
+std::string actionToString(const IncrementBy&)
+{
+    return "IncrementBy";
+}
+
+std::string actionToString(const DecrementBy&)
+{
+    return "DecrementBy";
+}
+
+
+#endif  // SRC_REDUCERS_COUNT_REDUCERS_H
