@@ -1,27 +1,62 @@
-# See build status from:
-dist: trusty
-sudo: false
 language: cpp
-compiler:
-  - gcc
-  - clang
+
+dist: trusty
+sudo: required
+
+matrix:
+  include:
+    # GCC 7
+    - os: linux
+      compiler: gcc
+      python: "3.6"
+      addons:
+        apt:
+          update: true
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+
+    # GCC 8
+    - os: linux
+      compiler: gcc
+      python: "3.6"
+      addons:
+        apt:
+          update: true
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
+
+    # Clang 6.0
+    - os: linux
+      compiler: clang
+      python: "3.6"
+      addons:
+        apt:
+          update: true
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-6.0
+          packages:
+            - clang-6.0
+      env: MATRIX_EVAL="CC=clang-6.0 && CXX=clang++-6.0"
+
 addons:
   apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    - llvm-toolchain-trusty-6.0
     packages:
-    - g++-8
-    - clang-6
+    - ninja-build
     - python3-pip
+
+before_install:
+  - eval "${MATRIX_EVAL}"
+
 install:
-  - mkdir ninjadir
-  - export PATH="`pwd`/ninjadir:${PATH}"
-  - wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip
-  - unzip ninja-linux.zip -d ninjadir
   - pip3 install meson
-  - "[ $CXX = g++ ] && export CXX=g++-8 || true"
-  - "[ $CXX = clang++ ] && export CXX=clang++-6 || true"
+
 script:
   - meson build
   - ninja -C build 
