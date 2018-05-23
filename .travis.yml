@@ -16,7 +16,6 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-7
-            - ninja-build
       env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
     # GCC 8
@@ -30,7 +29,6 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-8
-            - ninja-build
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
 
     # Clang 6.0
@@ -45,7 +43,6 @@ matrix:
             - llvm-toolchain-trusty-6.0
           packages:
             - clang-6.0
-            - ninja-build
       env: MATRIX_EVAL="CC=clang-6.0 && CXX=clang++-6.0"
 
 
@@ -54,6 +51,10 @@ before_install:
   - pyenv shell 3.6
 
 install:
+  - mkdir ninjadir
+  - export PATH="`pwd`/ninjadir:${PATH}"
+  - wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip
+  - unzip ninja-linux.zip -d ninjadir
   - pip install meson
 
 script:
