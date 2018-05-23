@@ -1,0 +1,27 @@
+# See build status from:
+dist: trusty
+sudo: false
+language: cpp
+compiler:
+  - gcc
+  - clang
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-trusty-6.0
+    packages:
+    - g++-8
+    - clang-6
+    - python3-pip
+install:
+  - mkdir ninjadir
+  - export PATH="`pwd`/ninjadir:${PATH}"
+  - wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip
+  - unzip ninja-linux.zip -d ninjadir
+  - pip3 install meson
+  - "[ $CXX = g++ ] && export CXX=g++-8 || true"
+  - "[ $CXX = clang++ ] && export CXX=clang++-6 || true"
+script:
+  - meson build
+  - ninja -C build 
