@@ -5,6 +5,7 @@
 #include <variant>
 #include <vector>
 #include <functional>
+#include <mutex>
 
 
 namespace impl
@@ -133,6 +134,9 @@ std::string actionToString(const T& arg)
 template<typename Model, typename Action>
 class Store
 {
+    using Mutex = std::mutex;
+    using Lock = std::lock_guard<Mutex>;
+
     using FlattenedActions = impl::flatten_variant_to_tuple_t<Action>;
 
     template<typename A>
@@ -162,6 +166,7 @@ public:
 
 	void update(const Action& action)
 	{
+        Lock lock(_mutex); // updates model only one threa at a time. Add queue???
         std::cout << actionToString(action) << "\n";
         updateModel(_model, action);
         notify(action);
@@ -199,6 +204,7 @@ private:
 
 	Model _model;
     TupleOfVectorsWithCallbacks _listener;
+    Mutex _mutex;
 };
 
 #endif  //SRC_ELMISCH_H
