@@ -137,34 +137,8 @@ class Store
 
     template<typename A>
     using ActionCallback = std::function<void(const A& action, const Model& model)>;
-/*
-    template<typename A>
-    struct AugmentActionWithVectorOfCallbacks 
-    { 
-        using type = std::vector<ActionCallback<A>>;
-    };
-*/
     template<typename A>
     using AugmentActionWithVectorOfCallbacks = std::vector<ActionCallback<A>>;
-
-/*
-    template<typename T>
-    struct AugmentTuple;
-
-    template<typename T>
-    struct AugmentTuple<std::tuple<T>>
-    {
-        //using type = std::tuple<AugmentActionWithVectorOfCallbacks<T>>;
-        using type = std::tuple<T>;
-    };
-
-    template<typename T, typename... Ts>
-    struct AugmentTuple<std::tuple<T, Ts...>>
-    {
-        using type = impl::cat<std::tuple<T>, AugmentTuple<std::tuple<Ts...>>::type>;
-    };
-*/
-
 
     template<typename T>
     struct AugmentTuple;
