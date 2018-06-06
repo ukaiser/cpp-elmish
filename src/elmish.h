@@ -82,17 +82,43 @@ namespace impl
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
+    template<class T, class...Args>
+    using overload_ify = decltype(
+          std::declval<T>().operator()( std::declval<Args>()... )
+    );
+
+    template<class T, class Sig, class=void>
+    struct has_overload:std::false_type{};
+
+    template<class T, class R, class...Args>
+    struct has_overload<T, R(Args...),
+      typename std::enable_if<
+        std::is_convertible<
+          overload_ify<T, Args...>,
+          R
+        >::value
+      >::type
+    >:std::true_type{};
+
+#endif
+
 template <typename Model, typename Function, typename Variant, typename T, typename ...Ts>
 inline auto update_visit_impl(
     Model& m,
     const Variant& v,
     const Function& f
 ) {
-    if (auto x = std::get_if<T>(&v)) {
-        return f(m, *x);
-    } else if constexpr (sizeof...(Ts) > 0) {
+    if constexpr (has_overload<Function, void(Model&, T)>::value) {
+        if (auto x = std::get_if<T>(&v)) {
+            return f(m, *x);
+        } else if constexpr (sizeof...(Ts) > 0) {
+            return update_visit_impl<Model, Function, Variant, Ts...>(m, v, f);
+        }
+    } 
+    else if constexpr (sizeof...(Ts) > 0) {
         return update_visit_impl<Model, Function, Variant, Ts...>(m, v, f);
     }
+
 }
 
 template <typename Model, typename Function, typename ...Ts>
