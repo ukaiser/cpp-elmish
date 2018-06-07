@@ -100,8 +100,6 @@ template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
       >::type
     >:std::true_type{};
 
-#endif
-
 template <typename Model, typename Function, typename Variant, typename T, typename ...Ts>
 inline auto update_visit_impl(
     Model& m,
@@ -166,9 +164,18 @@ class Store
     using FlattenedActions = impl::flatten_variant_to_tuple_t<Action>;
 
     template<typename A>
-    using ActionCallback = std::function<void(const A& action, const Model& model)>;
+    using ActionModelCallback = std::function<void(const A& action, const Model& model)>;
+
+    using ModelCallback = std::function<void(const Model& model)>;
+
     template<typename A>
-    using AugmentActionWithVectorOfCallbacks = std::vector<ActionCallback<A>>;
+    using ActionCallback = std::function<void(const A& action)>;
+    
+    template<typename A>
+    using Callback = std::function<void()>;
+
+    template<typename A>
+    using AugmentActionWithVectorOfCallbacks = std::vector<ActionModelCallback<A>>;
 
     template<typename T>
     struct AugmentTuple;
@@ -179,7 +186,8 @@ class Store
         using type = std::tuple<AugmentActionWithVectorOfCallbacks<Ts>...>;
     };
 
-    using TupleOfVectorsWithCallbacks = typename AugmentTuple<FlattenedActions>::type;
+    using ActionCallbacks = typename AugmentTuple<FlattenedActions>::type;
+    using ModelCallbacks = std::vector<ModelCallback>;
 
 public:
 
@@ -196,17 +204,60 @@ public:
         std::cout << actionToString(action) << "\n";
         updateModel(_model, action);
         notify(action);
+        notifyModelCallbacks();
+
 	}
 
 
     template<typename A>
-    void subscribe(ActionCallback<A> f)
+    void subscribe(ActionModelCallback<A>&& f)
     {
-        std::get<impl::TupleIndex<A, FlattenedActions>::value>(_listener).push_back(f);
+        std::get<impl::TupleIndex<A, FlattenedActions>::value>(_actionListener)
+            .emplace_back(std::forward<ActionModelCallback<A>>(f));
     }
 
+    void subscribe(const ModelCallback& f)
+    {
+        _modelCallbacks.push_back(f);
+    }
 
+    void subscribe(ModelCallback&& f)
+    {
+        _modelCallbacks.push_back(std::move(f));
+    }
+
+    template<typename A>
+    void subscribe(ActionCallback<A>&& f)
+    {
+        std::get<impl::TupleIndex<A, FlattenedActions>::value>(_actionListener)
+            .emplace_back(
+                [_f = std::forward<ActionCallback<A>>(f)](const A& action, auto&&)
+                {
+                    _f(action);
+                }
+            );
+    }
+
+    template<typename A>
+    void subscribe(Callback<A>&& f)
+    {
+        std::get<impl::TupleIndex<A, FlattenedActions>::value>(_actionListener)
+            .emplace_back(
+                [_f = std::forward<Callback<A>>(f)](auto&&, auto&&)
+                {
+                    _f();
+                }
+            );
+    }
 private:
+
+    void notifyModelCallbacks()
+    {
+        for(auto&& c : _modelCallbacks)
+        {
+            c(_model);
+        } 
+    }
 
     template<typename ...As>
     void notify(const std::variant<As...>&  action)
@@ -220,7 +271,7 @@ private:
     template<typename A>
     void notify(const A&  action)
     {
-        auto&& actionListeners = std::get<impl::TupleIndex<A, FlattenedActions>::value>(_listener);
+        auto&& actionListeners = std::get<impl::TupleIndex<A, FlattenedActions>::value>(_actionListener);
         for(auto&& listener : actionListeners)
         {
             listener(action, _model);
@@ -229,7 +280,8 @@ private:
 
 
 	Model _model;
-    TupleOfVectorsWithCallbacks _listener;
+    ActionCallbacks _actionListener;
+    ModelCallbacks _modelCallbacks;
     Mutex _mutex;
 };
 

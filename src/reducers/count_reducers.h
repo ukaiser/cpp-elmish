@@ -41,7 +41,7 @@ auto updateCountModel = [](AppModel &model, const CountAction &countMessage) {
 std::string actionToString(const IncrementBy& incrementBy)
 {
     return fmt::format("IncrementBy {}", incrementBy.value);
-}
+} 
 
 std::string actionToString(const DecrementBy& decrementBy)
 {

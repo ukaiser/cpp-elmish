@@ -10,12 +10,12 @@
 
 auto updateCameraConnected = [](CameraConnectedModel &model,
                       const CameraConnected &) {
-  model.isConnected += true;
+  model.isConnected = true;
 };
 
 
 auto updateCameraDisconnected = [](CameraConnectedModel &model, const CameraDisconnected &) {
-  model.isConnected -= false;
+  model.isConnected = false;
 };
 
 auto updateCameraModle = [](AppModel &model, const CameraAction &cameraMessage) {
