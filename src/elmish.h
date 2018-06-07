@@ -8,52 +8,49 @@
 #include <mutex>
 
 
-namespace impl
+namespace details
 {
     template <typename... Ts>
     using cat = decltype(std::tuple_cat(std::declval<Ts>()...));
 
     template <typename TResult, typename... Ts>
-    struct flatten_variant;
-}
+    struct flattenVariant;
 
-namespace impl
-{
     template <typename TResult>
-    struct flatten_variant<TResult>
+    struct flattenVariant<TResult>
     {
         using type = TResult;
     };
 
     template <typename TResult, typename T, typename... TOther>
-    struct flatten_variant<TResult, T, TOther...>
+    struct flattenVariant<TResult, T, TOther...>
     {
         using type = cat<TResult, std::tuple<T>,
-                         typename flatten_variant<TResult, TOther...>::type>;
+                         typename flattenVariant<TResult, TOther...>::type>;
     };
 
     template <typename TResult, typename... Ts, typename... TOther>
-    struct flatten_variant<TResult, std::variant<Ts...>, TOther...>
+    struct flattenVariant<TResult, std::variant<Ts...>, TOther...>
     {
         using type =
-            cat<TResult, typename flatten_variant<std::tuple<>, Ts...>::type,
-                typename flatten_variant<TResult, TOther...>::type>;
+            cat<TResult, typename flattenVariant<std::tuple<>, Ts...>::type,
+                typename flattenVariant<TResult, TOther...>::type>;
     };
     
     template<typename T>
-    struct to_variant;
+    struct toVariant;
     
     template<typename... Ts>
-    struct to_variant<std::tuple<Ts...>>
+    struct toVariant<std::tuple<Ts...>>
     {
         using type = std::variant<Ts...>;
     };
 
     template<typename T>
-    using flatten_variant_t = typename to_variant<typename flatten_variant<std::tuple<>, T>::type>::type;
+    using flatten_variant_t = typename toVariant<typename flattenVariant<std::tuple<>, T>::type>::type;
 
     template<typename T>
-    using flatten_variant_to_tuple_t = typename flatten_variant<std::tuple<>, T>::type;
+    using flatten_variant_to_tuple_t = typename flattenVariant<std::tuple<>, T>::type;
 
 
     template<typename T, typename Tuple>
@@ -71,7 +68,44 @@ namespace impl
         static constexpr std::size_t value = 1 + TupleIndex<T, std::tuple<Ts...>>::value;
     };
 
-    //template<typename T>
+    template<class T, class...Args>
+    using overloadIfy = decltype(
+    std::declval<T>().operator()( std::declval<Args>()... )
+    );
+
+    template<class T, class Sig, class=void>
+    struct hasOverload:std::false_type{};
+
+    template<class T, class R, class...Args>
+    struct hasOverload<T, R(Args...),
+            typename std::enable_if<
+                    std::is_convertible<
+                            overloadIfy<T, Args...>,
+                            R
+                    >::value
+            >::type
+    >:std::true_type{};
+
+    template <typename Model, typename Function, typename Variant, typename T, typename ...Ts>
+    inline auto updateVisitImpl(
+            Model& m,
+            const Variant& v,
+            const Function& f
+    ) {
+        if constexpr (hasOverload<Function, void(Model&, T)>::value) {
+            if (auto x = std::get_if<T>(&v)) {
+                return f(m, *x);
+            } else if constexpr (sizeof...(Ts) > 0) {
+                return updateVisitImpl<Model, Function, Variant, Ts...>(m, v, f);
+            }
+        }
+        else if constexpr (sizeof...(Ts) > 0) {
+            return updateVisitImpl<Model, Function, Variant, Ts...>(m, v, f);
+        }
+
+    }
+
+
 
 }
 
@@ -82,53 +116,18 @@ namespace impl
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
-    template<class T, class...Args>
-    using overload_ify = decltype(
-          std::declval<T>().operator()( std::declval<Args>()... )
-    );
 
-    template<class T, class Sig, class=void>
-    struct has_overload:std::false_type{};
-
-    template<class T, class R, class...Args>
-    struct has_overload<T, R(Args...),
-      typename std::enable_if<
-        std::is_convertible<
-          overload_ify<T, Args...>,
-          R
-        >::value
-      >::type
-    >:std::true_type{};
-
-template <typename Model, typename Function, typename Variant, typename T, typename ...Ts>
-inline auto update_visit_impl(
-    Model& m,
-    const Variant& v,
-    const Function& f
-) {
-    if constexpr (has_overload<Function, void(Model&, T)>::value) {
-        if (auto x = std::get_if<T>(&v)) {
-            return f(m, *x);
-        } else if constexpr (sizeof...(Ts) > 0) {
-            return update_visit_impl<Model, Function, Variant, Ts...>(m, v, f);
-        }
-    } 
-    else if constexpr (sizeof...(Ts) > 0) {
-        return update_visit_impl<Model, Function, Variant, Ts...>(m, v, f);
-    }
-
-}
 
 template <typename Model, typename Function, typename ...Ts>
-inline auto update_visit(
-    Model& m,
-    const std::variant<Ts...>& v,
-    const Function& f
+inline auto updateVisit(
+        Model &m,
+        const std::variant<Ts...> &v,
+        const Function &f
 ) {
     if (v.valueless_by_exception())
         __builtin_unreachable();
 
-    return update_visit_impl<Model, Function, std::variant<Ts...>, Ts...>(m, v, f);
+    return details::updateVisitImpl<Model, Function, std::variant<Ts...>, Ts...>(m, v, f);
 }
 
 template<typename T>
@@ -161,7 +160,7 @@ class Store
     using Mutex = std::mutex;
     using Lock = std::lock_guard<Mutex>;
 
-    using FlattenedActions = impl::flatten_variant_to_tuple_t<Action>;
+    using FlattenedActions = details::flatten_variant_to_tuple_t<Action>;
 
     template<typename A>
     using ActionModelCallback = std::function<void(const A& action, const Model& model)>;
@@ -212,7 +211,7 @@ public:
     template<typename A>
     void subscribe(ActionModelCallback<A>&& f)
     {
-        std::get<impl::TupleIndex<A, FlattenedActions>::value>(_actionListener)
+        std::get<details::TupleIndex<A, FlattenedActions>::value>(_actionListener)
             .emplace_back(std::forward<ActionModelCallback<A>>(f));
     }
 
@@ -229,7 +228,7 @@ public:
     template<typename A>
     void subscribe(ActionCallback<A>&& f)
     {
-        std::get<impl::TupleIndex<A, FlattenedActions>::value>(_actionListener)
+        std::get<details::TupleIndex<A, FlattenedActions>::value>(_actionListener)
             .emplace_back(
                 [_f = std::forward<ActionCallback<A>>(f)](const A& action, auto&&)
                 {
@@ -241,7 +240,7 @@ public:
     template<typename A>
     void subscribe(Callback<A>&& f)
     {
-        std::get<impl::TupleIndex<A, FlattenedActions>::value>(_actionListener)
+        std::get<details::TupleIndex<A, FlattenedActions>::value>(_actionListener)
             .emplace_back(
                 [_f = std::forward<Callback<A>>(f)](auto&&, auto&&)
                 {
@@ -271,7 +270,7 @@ private:
     template<typename A>
     void notify(const A&  action)
     {
-        auto&& actionListeners = std::get<impl::TupleIndex<A, FlattenedActions>::value>(_actionListener);
+        auto&& actionListeners = std::get<details::TupleIndex<A, FlattenedActions>::value>(_actionListener);
         for(auto&& listener : actionListeners)
         {
             listener(action, _model);

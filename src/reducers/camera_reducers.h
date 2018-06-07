@@ -19,10 +19,10 @@ auto updateCameraDisconnected = [](CameraConnectedModel &model, const CameraDisc
 };
 
 auto updateCameraModle = [](AppModel &model, const CameraAction &cameraMessage) {
-        update_visit(model.cameraConnectedModel, cameraMessage, overloaded {
+    updateVisit(model.cameraConnectedModel, cameraMessage, overloaded{
             updateCameraConnected,
             updateCameraDisconnected
-        });
+    });
 };
 
 

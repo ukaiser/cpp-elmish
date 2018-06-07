@@ -7,9 +7,9 @@
 
 void updateModel(AppModel &model, const AppAction& message)
 {
-    update_visit(model, message, overloaded {
-        updateCountModel,
-        updateCameraModle
+    updateVisit(model, message, overloaded{
+            updateCountModel,
+            updateCameraModle
     });   
 }   
 

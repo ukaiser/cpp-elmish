@@ -32,10 +32,10 @@ auto updateDecrementBy = [](AppModel &model, const DecrementBy &decrementtBy) {
 
 
 auto updateCountModel = [](AppModel &model, const CountAction &countMessage) {
-        update_visit(model, countMessage, overloaded {
+    updateVisit(model, countMessage, overloaded {
             updateIncrementBy,
             updateDecrementBy
-        });
+    });
 };
 
 std::string actionToString(const IncrementBy& incrementBy)
