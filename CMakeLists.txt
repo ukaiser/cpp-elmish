@@ -10,6 +10,10 @@ if(MSVC)
     add_compile_options(/W3 /WX)
 else()
     add_compile_options(-W -Wall -Werror)
+
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        add_compile_options(-Wno-unused-lambda-capture)
+    endif()
 endif()
 
 add_subdirectory(third_party)
