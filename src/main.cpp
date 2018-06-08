@@ -1,6 +1,9 @@
 
+#include <atomic>
+#include <chrono>
 #include <iostream>
 #include <string>
+#include <thread>
 #include <variant>
 #include <vector>
 
@@ -82,34 +85,52 @@ int main()
 	AppStore::instance().update(DecrementBy{4});
 	AppStore::instance().update(CameraDisconnected{});
 
-	py::scoped_interpreter guard{};  // start the interpreter and keep it alive
+	std::atomic_bool run = true;
 
-	py::exec(R"(
-	import elmish
+	std::thread python([&] {
+		py::scoped_interpreter guard{};  // start the interpreter and keep it alive
+		py::exec(R"(
+		import elmish
 
-	def myModelPrint(model):
-		print('AppModel counter: {}'.format(model.countModel.counter))	
+		def myModelPrint(model):
+			print('AppModel counter: {}'.format(model.countModel.counter))	
 
-	
-	def reduce(model, action):
-		print('Action type: {}'.format(type(action)))
 		
-		if isinstance(action, elmish.IncrementBy):
-			model.countModel.counter += action.value
+		def reduce(model, action):
+			print('Action type: {}'.format(type(action)))
+			
+			if isinstance(action, elmish.IncrementBy):
+				model.countModel.counter += action.value
+			
+			return model
+
 		
-		return model
 
-	
+		connected = elmish.CameraConnected(False)
 
-	connected = elmish.CameraConnected(False)
+		appStoreAdapter = elmish.AppStoreAdapter()
+		appStoreAdapter.subscribeModelCallback(myModelPrint)
+		appStoreAdapter.setReduceCallback(reduce)
+		appStoreAdapter.update(elmish.IncrementBy(42))
 
-	appStoreAdapter = elmish.AppStoreAdapter()
-	appStoreAdapter.subscribeModelCallback(myModelPrint)
-	appStoreAdapter.setReduceCallback(reduce)
-	appStoreAdapter.update(elmish.IncrementBy(42))
+		)");
 
-    )");
+		while (run)
+		{
+			py::exec("");
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+		}
+	});
 
-	AppStore::instance().update(IncrementBy{2});
-	AppStore::instance().update(IncrementBy{3});
+	std::thread a([&] {
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+		AppStore::instance().update(IncrementBy{2});
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		AppStore::instance().update(IncrementBy{3});
+	});
+	std::this_thread::sleep_for(std::chrono::seconds(3));
+	run = false;
+
+	a.join();
+	python.join();
 }
