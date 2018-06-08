@@ -11,6 +11,12 @@ struct AppModel
 	CameraConnectedModel cameraConnectedModel;
 };
 
+bool operator==(const AppModel& left, const AppModel& right)
+{
+	return left.countModel == right.countModel &&
+		   left.cameraConnectedModel == right.cameraConnectedModel;
+}
+
 CountModel& selectCountModel(AppModel& appModel)
 {
 	return appModel.countModel;

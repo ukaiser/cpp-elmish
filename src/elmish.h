@@ -87,13 +87,14 @@ struct hasOverload<
 };
 
 template <typename Model, typename Function, typename Variant, typename T, typename... Ts>
-inline auto updateVisitImpl(Model& m, const Variant& v, const Function& f)
+inline bool updateVisitImpl(Model& m, const Variant& v, const Function& f)
 {
 	if constexpr (hasOverload<Function, void(Model&, T)>::value)
 	{
 		if (auto x = std::get_if<T>(&v))
 		{
-			return f(m, *x);
+			f(m, *x);
+			return true;
 		}
 		else if constexpr (sizeof...(Ts) > 0)
 		{
@@ -104,20 +105,14 @@ inline auto updateVisitImpl(Model& m, const Variant& v, const Function& f)
 	{
 		return updateVisitImpl<Model, Function, Variant, Ts...>(m, v, f);
 	}
+
+	return false;
 }
 
 }  // namespace details
 
-template <class... Ts>
-struct overloaded : Ts...
-{
-	using Ts::operator()...;
-};
-template <class... Ts>
-overloaded(Ts...)->overloaded<Ts...>;
-
 template <typename Model, typename Function, typename... Ts>
-inline auto updateVisit(Model& m, const std::variant<Ts...>& v, const Function& f)
+inline bool updateVisit(Model& m, const std::variant<Ts...>& v, const Function& f)
 {
 	if (v.valueless_by_exception()) __builtin_unreachable();
 
@@ -136,6 +131,18 @@ std::string getTypeName(T&&)
 #else
 	return typeid(T).name();
 #endif
+}
+
+template <typename... Ts>
+std::string actionToTypeName(const std::variant<Ts...>& action)
+{
+	return std::visit([](auto&& arg) { return actionToTypeName(arg); }, action);
+}
+
+template <typename T>
+std::string actionToTypeName(const T& arg)
+{
+	return getTypeName(arg);
 }
 
 template <typename... Ts>
@@ -184,17 +191,43 @@ class Store
 	using ActionCallbacks = typename AugmentTuple<FlattenedActions>::type;
 	using ModelCallbacks = std::vector<ModelCallback>;
 
+	Store() = default;
+
 	public:
+	using ReduceCallback = std::function<Model(const Model& model, const Action& action)>;
+
+	static Store& instance()
+	{
+		static Store store;
+		return store;
+	}
+
 	// return by value?
 	const Model& model() const noexcept { return _model; }
 
 	void update(const Action& action)
 	{
 		Lock lock(_mutex);  // updates model only one threa at a time. Add queue???
-		std::cout << actionToString(action) << "\n";
-		updateModel(_model, action);
+		if (updateModel(_model, action))
+		{
+			std::cout << actionToString(action) << "\n";
+			notifyModelCallbacks();
+		}
+		else
+		{
+			if (_reduceCallback)
+			{
+				auto newModel = _reduceCallback(_model, action);
+
+				if (newModel == _model)
+				{ std::cout << "no reducer for action: " << actionToTypeName(action) << "\n"; } else
+				{
+					_model = newModel;
+					notifyModelCallbacks();
+				}
+			}
+		}
 		notify(action);
-		notifyModelCallbacks();
 	}
 
 	template <typename A>
@@ -223,13 +256,15 @@ class Store
 			.emplace_back([_f = std::forward<Callback<A>>(f)](auto&&, auto&&) { _f(); });
 	}
 
+	void setReduceCallback(const ReduceCallback& reduceCallback)
+	{
+		_reduceCallback = reduceCallback;
+	}
+
 	private:
 	void notifyModelCallbacks()
 	{
-		for (auto&& c : _modelCallbacks)
-		{
-			c(_model);
-		}
+		for (auto&& c : _modelCallbacks) { c(_model); }
 	}
 
 	template <typename... As>
@@ -243,15 +278,13 @@ class Store
 	{
 		auto&& actionListeners =
 			std::get<details::TupleIndex<A, FlattenedActions>::value>(_actionListener);
-		for (auto&& listener : actionListeners)
-		{
-			listener(action, _model);
-		}
+		for (auto&& listener : actionListeners) { listener(action, _model); }
 	}
 
 	Model _model;
 	ActionCallbacks _actionListener;
 	ModelCallbacks _modelCallbacks;
+	ReduceCallback _reduceCallback;
 	Mutex _mutex;
 };
 

@@ -4,9 +4,9 @@
 
 #include <string>
 #include "actions/count_actions.h"
-#include "elmish.h"
 #include "fmt/format.h"
 #include "models/app_model.h"
+#include "overloaded.h"
 
 auto updateIncrementBy = [](AppModel& model, const IncrementBy& incrementBy) {
 	selectCountModel(model).counter += incrementBy.value;
@@ -16,9 +16,7 @@ auto updateDecrementBy = [](AppModel& model, const DecrementBy& decrementtBy) {
 	selectCountModel(model).counter -= decrementtBy.value;
 };
 
-auto updateCountModel = [](AppModel& model, const CountAction& countMessage) {
-	updateVisit(model, countMessage, overloaded{updateIncrementBy, updateDecrementBy});
-};
+auto countReducers = overloaded{/*updateIncrementBy*/ updateDecrementBy};
 
 std::string actionToString(const IncrementBy& incrementBy)
 {

@@ -4,22 +4,18 @@
 
 #include <string>
 #include "actions/count_actions.h"
-#include "elmish.h"
 #include "models/app_model.h"
+#include "overloaded.h"
 
-auto updateCameraConnected = [](CameraConnectedModel& model, const CameraConnected&) {
-	model.isConnected = true;
+auto updateCameraConnected = [](AppModel& model, const CameraConnected&) {
+	model.cameraConnectedModel.isConnected = true;
 };
 
-auto updateCameraDisconnected = [](CameraConnectedModel& model, const CameraDisconnected&) {
-	model.isConnected = false;
+auto updateCameraDisconnected = [](AppModel& model, const CameraDisconnected&) {
+	model.cameraConnectedModel.isConnected = false;
 };
 
-auto updateCameraModle = [](AppModel& model, const CameraAction& cameraMessage) {
-	updateVisit(model.cameraConnectedModel,
-				cameraMessage,
-				overloaded{updateCameraConnected, updateCameraDisconnected});
-};
+auto cameraReducers = overloaded{updateCameraConnected, updateCameraDisconnected};
 
 std::string actionToString(const CameraConnected&)
 {

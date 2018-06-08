@@ -4,6 +4,7 @@
 
 struct CameraConnected
 {
+	bool connected;
 };
 struct CameraDisconnected
 {
