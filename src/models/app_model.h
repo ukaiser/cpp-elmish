@@ -5,21 +5,20 @@
 #include "camera_model.h"
 #include "count_model.h"
 
-
-struct AppModel {
-  CountModel countModel;
-  CameraConnectedModel cameraConnectedModel;
+struct AppModel
+{
+	CountModel countModel;
+	CameraConnectedModel cameraConnectedModel;
 };
-
 
 CountModel& selectCountModel(AppModel& appModel)
 {
-    return appModel.countModel;
+	return appModel.countModel;
 }
 
 CameraConnectedModel& slectCameraModel(AppModel& appModel)
 {
-    return appModel.cameraConnectedModel;
+	return appModel.cameraConnectedModel;
 }
 
 #endif  // SRC_MODELS_APP_MODEL_H

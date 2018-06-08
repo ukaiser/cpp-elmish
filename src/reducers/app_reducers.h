@@ -2,15 +2,12 @@
 #ifndef SRC_REDUCERS_APP_REDUCERS_H
 #define SRC_REDUCERS_APP_REDUCERS_H
 
-#include "count_reducers.h"
 #include "camera_reducers.h"
+#include "count_reducers.h"
 
-void updateModel(AppModel &model, const AppAction& message)
+void updateModel(AppModel& model, const AppAction& message)
 {
-    updateVisit(model, message, overloaded{
-            updateCountModel,
-            updateCameraModle
-    });   
-}   
+	updateVisit(model, message, overloaded{updateCountModel, updateCameraModle});
+}
 
 #endif  // SRC_REDUCERS_APP_REDUCERS_H
