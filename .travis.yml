@@ -52,6 +52,7 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
+  - pyenv shell 3.6
 
 install:
   - mkdir ninjadir
